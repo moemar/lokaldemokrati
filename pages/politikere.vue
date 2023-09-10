@@ -1,5 +1,5 @@
 <template>
     <div>
-        <h1>Forsiden</h1>
+        <h1>Politikere</h1>
     </div>
 </template>

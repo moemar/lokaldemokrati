@@ -1,5 +1,5 @@
 <template>
     <div>
-        <h1>Forsiden</h1>
+        <h1>Kommunestyret</h1>
     </div>
 </template>

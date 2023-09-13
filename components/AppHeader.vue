@@ -2,6 +2,7 @@
     <Disclosure as="nav" class="bg-gray-800" v-slot="{ open }">
         <div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
             <div class="relative flex h-16 items-center justify-between">
+                <h2 class="text-white">Lokaldemokratiet | Elverum</h2>
                 <div class="flex flex-1 items-center justify-center sm:items-stretch sm:justify-start">
                     <div class="hidden sm:ml-6 sm:block">
                         <div class="flex space-x-4">
@@ -31,6 +32,7 @@ const navigation = [
     { name: 'Dashboard', href: '/', current: true },
     { name: 'Kommunestyret', href: '/kommunestyret', current: false },
     { name: 'Saker', href: '/saker', current: false },
+    { name: 'Partier', href: '/partier', current: false },
     { name: 'Politikere', href: '/politikere', current: false },
 ]
 </script>

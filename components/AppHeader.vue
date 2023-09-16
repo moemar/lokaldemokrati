@@ -6,7 +6,7 @@
                 <div class="flex flex-1 items-center justify-center sm:items-stretch sm:justify-start">
                     <div class="hidden sm:ml-6 sm:block">
                         <div class="flex space-x-4">
-                            <NuxtLink v-for="item in navigation" :key="item.name" :to="item.href" :class="[item.current ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white', 'rounded-md px-3 py-2 text-sm font-medium']" :aria-current="item.current ? 'page' : undefined">{{ item.name }}</NuxtLink>
+                            <NuxtLink v-for="item in navigation" :key="item.name" :to="item.href" :class="[isCurrentPath(item.href) ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white', 'rounded-md px-3 py-2 text-sm font-medium']" :aria-current="isCurrentPath(item.href) ? 'page' : undefined">{{ item.name }}</NuxtLink>
                         </div>
                     </div>
                 </div>
@@ -19,7 +19,7 @@
 
         <DisclosurePanel class="sm:hidden">
             <div class="space-y-1 px-2 pb-3 pt-2">
-                <DisclosureButton v-for="item in navigation" :key="item.name" as="a" :href="item.href" :class="[item.current ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white', 'block rounded-md px-3 py-2 text-base font-medium']" :aria-current="item.current ? 'page' : undefined">{{ item.name }}</DisclosureButton>
+                <DisclosureButton v-for="item in navigation" :key="item.name" as="a" :href="item.href" :class="[isCurrentPath(item.href) ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white', 'block rounded-md px-3 py-2 text-base font-medium']" :aria-current="isCurrentPath(item.href) ? 'page' : undefined">{{ item.name }}</DisclosureButton>
             </div>
         </DisclosurePanel>
     </Disclosure>
@@ -28,11 +28,17 @@
 <script setup lang="ts">
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
 
-const navigation = [
-    { name: 'Dashboard', href: '/', current: true },
-    { name: 'Kommunestyret', href: '/kommunestyret', current: false },
-    { name: 'Saker', href: '/saker', current: false },
-    { name: 'Partier', href: '/partier', current: false },
-    { name: 'Politikere', href: '/politikere', current: false },
-]
+const route = useRoute()
+
+const isCurrentPath = (path: string) => {
+    return route.path === path
+}
+
+const navigation = ref([
+    { name: 'Dashboard', href: '/' },
+    { name: 'Kommunestyret', href: '/kommunestyret' },
+    { name: 'Saker', href: '/saker' },
+    { name: 'Partier', href: '/partier' },
+    { name: 'Politikere', href: '/politikere' },
+])
 </script>

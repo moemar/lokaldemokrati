@@ -125,7 +125,7 @@ function openModalEditParty(party) {
 }
 
 async function getParties() {
-    const { data } = await supabase.from('Parties').select()
+    const { data } = await supabase.from('Parties').select().order('name')
     parties.value = data
 }
 

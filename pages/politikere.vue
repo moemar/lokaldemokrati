@@ -5,7 +5,29 @@
             <p class="mt-2 text-sm text-gray-700">Oversikt over alle politikere tilknyttet kommunen.</p>
         </div>
         <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-            <button type="button" class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Add user</button>
+            <UButton label="Ny politiker" @click="openModalNewPolitician" />
+            <UModal v-model="modalNewPoliticianIsOpen">
+                <UCard :ui="{ divide: 'divide-y divide-gray-100 dark:divide-gray-800' }">
+                    <template #header>
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">Ny politiker</h3>
+                            <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark-20-solid" class="-my-1" @click="modalNewPoliticianIsOpen = false" />
+                        </div>
+                    </template>
+                    <UAlert v-show="errorMessage" :description="errorMessage" class="mb-3" color="red" variant="subtle" />
+                    <UForm :validate="validate" :state="newPolitician" @submit="addPolitician">
+                        <UFormGroup label="Navn" name="name" class="mb-3">
+                            <UInput v-model="newPolitician.name" />
+                        </UFormGroup>
+                        <UFormGroup label="Parti" name="party" class="mb-3">
+                            <USelect v-model="newPolitician.party" :options="parties" option-attribute="name" />
+                        </UFormGroup>
+                        <UButton type="submit">Lagre</UButton>
+                    </UForm>
+                    <template #footer>
+                    </template>
+                </UCard>
+            </UModal>
         </div>
     </div>
     <div class="mt-8 flow-root">
@@ -16,26 +38,20 @@
                         <thead class="bg-white">
                             <tr>
                                 <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-3">Navn</th>
-                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Parti</th>
-                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Rolle</th>
-                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">E-post</th>
                                 <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-3">
                                     <span class="sr-only">Edit</span>
                                 </th>
                             </tr>
                         </thead>
                         <tbody class="bg-white">
-                            <template v-for="location in locations" :key="location.name">
+                            <template v-for="party in parties" :key="party.id">
                                 <tr class="border-t border-gray-200">
-                                    <th colspan="5" scope="colgroup" class="bg-gray-50 py-2 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-3">{{ location.name }}</th>
+                                    <th colspan="2" scope="colgroup" class="bg-gray-50 py-2 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-3">{{ party.name }} ({{ party.short_name }})</th>
                                 </tr>
-                                <tr v-for="(person, personIdx) in location.people" :key="person.email" :class="[personIdx === 0 ? 'border-gray-300' : 'border-gray-200', 'border-t']">
-                                    <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-3">{{ person.name }}</td>
-                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ person.title }}</td>
-                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ person.email }}</td>
-                                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ person.role }}</td>
+                                <tr v-for="(politician, politicianIdx) in party.Politicians" :key="politician.id" :class="[politicianIdx === 0 ? 'border-gray-300' : 'border-gray-200', 'border-t']">
+                                    <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-3">{{ politician.name }}</td>
                                     <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-3">
-                                        <a href="#" class="text-indigo-600 hover:text-indigo-900">Edit<span class="sr-only">, {{ person.name }}</span></a>
+                                        <a href="#" class="text-indigo-600 hover:text-indigo-900">Edit<span class="sr-only">, {{ politician.name }}</span></a>
                                     </td>
                                 </tr>
                             </template>
@@ -46,3 +62,69 @@
         </div>
     </div>
 </template>
+
+<script setup>
+const supabase = useSupabaseClient()
+const parties = ref([])
+const errorMessage = ref(undefined)
+
+const modalNewPoliticianIsOpen = ref(false)
+
+const validate = (state) => {
+    const errors = []
+    if (!state.name) errors.push({ path: 'name', message: 'Påkrevet' })
+    if (!state.party) errors.push({ path: 'party', message: 'Påkrevet' })
+    return errors
+}
+
+const newPolitician = ref({
+    name: undefined,
+    party: undefined
+})
+
+function openModalNewPolitician() {
+    newPolitician.value = {
+        name: undefined,
+        party: undefined
+    }
+    modalNewPoliticianIsOpen.value = true
+}
+
+async function addPolitician() {
+    console.log(newPolitician)
+    const { data, error } = await supabase
+        .from('Politician')
+        .insert([
+            {
+                name: newPolitician.value.name,
+                party: newPolitician.value.party.id
+            }
+        ])
+        .select()
+    console.log(error)
+    if (error) {
+        errorMessage.value = error.message
+    }
+    else {
+        // getParties()
+        modalNewPartyisOpen.value = false
+    }
+}
+
+async function getParties() {
+    let { data, error } = await supabase
+        .from('Parties')
+        .select(`
+            id, name, short_name,
+            Politicians (
+                id, name
+            )`)
+        .order('name')
+
+    parties.value = data
+}
+
+onMounted(() => {
+    getParties()
+})
+</script>

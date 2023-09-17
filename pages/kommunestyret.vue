@@ -5,13 +5,44 @@
             <p class="mt-2 text-sm text-gray-700">Oversikt over alle medlemmer i kommunestyret, med partitilhørighet.</p>
         </div>
         <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-            <button type="button" class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Add user</button>
+            <UButton label="Nytt kommunestyre" @click="openModalNewCouncil" />
+            <UModal v-model="modalNewCouncilIsOpen">
+                <UCard :ui="{ divide: 'divide-y divide-gray-100 dark:divide-gray-800' }">
+                    <template #header>
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">Nytt kommunestyre</h3>
+                            <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark-20-solid" class="-my-1" @click="modalNewCouncilIsOpen = false" />
+                        </div>
+                    </template>
+                    <UAlert v-show="errorMessage" :description="errorMessage" class="mb-3" color="red" variant="subtle" />
+                    <UForm :validate="validate" :state="newCouncil" @submit="addCouncil">
+                        <UFormGroup label="Fra" name="from" class="mb-3">
+                            <VueDatePicker v-model="newCouncil.from" :format="format" :teleport="true" locale="no" cancelText="Avbryt" selectText="Velg dato" auto-apply />
+                        </UFormGroup>
+                        <UFormGroup label="Til" name="to" class="mb-3">
+                            <VueDatePicker v-model="newCouncil.to" :format="format" :teleport="true" locale="no" cancelText="Avbryt" selectText="Velg dato" auto-apply />
+                        </UFormGroup>
+                        <UButton type="submit">Lagre</UButton>
+                    </UForm>
+                    <template #footer>
+                    </template>
+                </UCard>
+            </UModal>
         </div>
     </div>
     <div class="mt-8 flow-root">
         <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
             <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+                <USelectMenu v-model="selectedCouncil" :options="councils" class="mb-2" :searchable="search" creatable>
+                    <template #label>
+                        <span v-if="selectedCouncil">{{ format(new Date(selectedCouncil.from)) }} - {{ format(new Date(selectedCouncil.to)) }}</span>
+                        <span v-else>Velg kommunestyre</span>
+                    </template>
+                    <template #option="{ option: council }">
+                        <span>{{ format(new Date(council.from)) }} - {{ format(new Date(council.to)) }}</span>
+                    </template>
+                </USelectMenu>
+                <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg mb-[500px]">
                     <table class="min-w-full divide-y divide-gray-300">
                         <thead class="bg-white">
                             <tr>
@@ -48,13 +79,73 @@
 </template>
 
 <script setup>
-const locations = [
-    {
-        name: 'Edinburgh',
-        people: [
-            { name: 'Lindsay Walton', title: 'Front-end Developer', email: 'lindsay.walton@example.com', role: 'Member' },
-            { name: 'Courtney Henry', title: 'Designer', email: 'courtney.henry@example.com', role: 'Admin' },
-        ],
-    },
-]
+import VueDatePicker from '@vuepic/vue-datepicker'
+import '@vuepic/vue-datepicker/dist/main.css'
+
+const supabase = useSupabaseClient()
+const councils = ref([])
+const selectedCouncil = ref(undefined)
+const errorMessage = ref(undefined)
+
+const format = (date) => {
+    const day = String(date.getDate()).padStart(2, '0')
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const year = date.getFullYear()
+    return `${day}.${month}.${year}`
+}
+
+const search = async (q) => {
+    if (!q) return councils.value
+    return councils.value.filter((council) => {
+        return format(new Date(council.from)).includes(q) || format(new Date(council.to)).includes(q)
+    })
+}
+
+const modalNewCouncilIsOpen = ref(false)
+
+const newCouncil = ref({
+    from: new Date(),
+    to: new Date(new Date().setFullYear(new Date().getFullYear() + 4))
+})
+
+function openModalNewCouncil() {
+    newCouncil.value = {
+        from: new Date(),
+        to: new Date(new Date().setFullYear(new Date().getFullYear() + 4))
+    }
+    modalNewCouncilIsOpen.value = true
+}
+
+async function addCouncil() {
+    const { data, error } = await supabase
+        .from('Councils')
+        .insert([
+            {
+                from: newCouncil.value.from,
+                to: newCouncil.value.to
+            }
+        ])
+        .select()
+
+    if (error) {
+        errorMessage.value = error.message
+    }
+    else {
+        getCouncils()
+        modalNewCouncilIsOpen.value = false
+    }
+}
+
+async function getCouncils() {
+    let { data, error } = await supabase
+        .from('Councils')
+        .select()
+        .order('from')
+
+    councils.value = data
+}
+
+onMounted(() => {
+    getCouncils()
+})
 </script>

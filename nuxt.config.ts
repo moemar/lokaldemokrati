@@ -13,5 +13,12 @@ export default defineNuxtConfig(
       ],
     supabase:
       {},
+    build:
+      {
+        transpile:
+          [
+            "@vuepic/vue-datepicker",
+          ],
+      },
   }
 );

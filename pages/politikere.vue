@@ -20,7 +20,29 @@
                             <UInput v-model="newPolitician.name" />
                         </UFormGroup>
                         <UFormGroup label="Parti" name="party" class="mb-3">
-                            <USelect v-model="newPolitician.party" :options="parties" option-attribute="name" />
+                            <USelect v-model="newPolitician.party" :options="parties" option-attribute="name" value-attribute="id" />
+                        </UFormGroup>
+                        <UButton type="submit">Lagre</UButton>
+                    </UForm>
+                    <template #footer>
+                    </template>
+                </UCard>
+            </UModal>
+            <UModal v-model="modalEditPoliticianIsOpen">
+                <UCard :ui="{ divide: 'divide-y divide-gray-100 dark:divide-gray-800' }">
+                    <template #header>
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">Endre politiker</h3>
+                            <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark-20-solid" class="-my-1" @click="modalEditPoliticianIsOpen = false" />
+                        </div>
+                    </template>
+                    <UAlert v-show="errorMessage" :description="errorMessage" class="mb-3" color="red" variant="subtle" />
+                    <UForm :validate="validate" :state="editedPolitician" @submit="editPolitician">
+                        <UFormGroup label="Navn" name="name" class="mb-3">
+                            <UInput v-model="editedPolitician.name" />
+                        </UFormGroup>
+                        <UFormGroup label="Parti" name="party" class="mb-3">
+                            <USelect v-model="editedPolitician.party" :options="parties" option-attribute="name" value-attribute="id" />
                         </UFormGroup>
                         <UButton type="submit">Lagre</UButton>
                     </UForm>
@@ -51,7 +73,8 @@
                                 <tr v-for="(politician, politicianIdx) in party.Politicians" :key="politician.id" :class="[politicianIdx === 0 ? 'border-gray-300' : 'border-gray-200', 'border-t']">
                                     <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-3">{{ politician.name }}</td>
                                     <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-3">
-                                        <a href="#" class="text-indigo-600 hover:text-indigo-900">Edit<span class="sr-only">, {{ politician.name }}</span></a>
+                                        <a href="#" class="text-indigo-600 hover:text-indigo-900" @click="openModalEditPolitician(politician, party.id)">Endre<span class="sr-only">, {{ politician.name }}</span></a> |
+                                        <a href="#" class="text-indigo-600 hover:text-indigo-900" @click="deletePolitician(politician.id)">Slett<span class="sr-only">, {{ politician.name }}</span></a>
                                     </td>
                                 </tr>
                             </template>
@@ -69,6 +92,7 @@ const parties = ref([])
 const errorMessage = ref(undefined)
 
 const modalNewPoliticianIsOpen = ref(false)
+const modalEditPoliticianIsOpen = ref(false)
 
 const validate = (state) => {
     const errors = []
@@ -82,6 +106,12 @@ const newPolitician = ref({
     party: undefined
 })
 
+const editedPolitician = ref({
+    id: undefined,
+    name: undefined,
+    party: undefined
+})
+
 function openModalNewPolitician() {
     newPolitician.value = {
         name: undefined,
@@ -90,24 +120,63 @@ function openModalNewPolitician() {
     modalNewPoliticianIsOpen.value = true
 }
 
+function openModalEditPolitician(politician, party) {
+    editedPolitician.value.id = politician.id
+    editedPolitician.value.name = politician.name
+    editedPolitician.value.party = party
+    modalEditPoliticianIsOpen.value = true
+}
+
 async function addPolitician() {
-    console.log(newPolitician)
     const { data, error } = await supabase
-        .from('Politician')
+        .from('Politicians')
         .insert([
             {
                 name: newPolitician.value.name,
-                party: newPolitician.value.party.id
+                party: newPolitician.value.party
             }
         ])
         .select()
-    console.log(error)
+
     if (error) {
         errorMessage.value = error.message
     }
     else {
-        // getParties()
-        modalNewPartyisOpen.value = false
+        getParties()
+        modalNewPoliticianIsOpen.value = false
+    }
+}
+
+async function editPolitician() {
+    const { data, error } = await supabase
+        .from('Politicians')
+        .update({
+            name: editedPolitician.value.name,
+            party: editedPolitician.value.party
+        })
+        .eq('id', editedPolitician.value.id)
+        .select()
+
+    if (error) {
+        errorMessage.value = error.message
+    }
+    else {
+        getParties()
+        modalEditPoliticianIsOpen.value = false
+    }
+}
+
+async function deletePolitician(id) {
+    const { error } = await supabase
+        .from('Politicians')
+        .delete()
+        .eq('id', id)
+
+    if (error) {
+        errorMessage.value = error.message
+    }
+    else {
+        getParties()
     }
 }
 

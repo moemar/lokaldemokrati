@@ -62,7 +62,7 @@
                                 <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-3">Parti</th>
                                 <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-3">Forkortelse</th>
                                 <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-3">
-                                    <span class="sr-only">Edit</span>
+                                    <span class="sr-only">Endre</span>
                                 </th>
                             </tr>
                         </thead>

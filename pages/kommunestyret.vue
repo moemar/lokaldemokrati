@@ -28,20 +28,52 @@
                     </template>
                 </UCard>
             </UModal>
+            <UModal v-model="modalViewCouncilIsOpen">
+                <UCard :ui="{ divide: 'divide-y divide-gray-100 dark:divide-gray-800' }">
+                    <template #header>
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">Detaljer</h3>
+                            <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark-20-solid" class="-my-1" @click="modalViewCouncilIsOpen = false" />
+                        </div>
+                    </template>
+                    <UAlert v-show="errorMessage" :description="errorMessage" class="mb-3" color="red" variant="subtle" />
+                    <UForm ref="formEditCouncil" :validate="validate" :state="editedCouncil" @submit="editCouncil">
+                        <UFormGroup label="Fra" name="from" class="mb-3">
+                            <VueDatePicker v-model="editedCouncil.from" :format="format" :teleport="true" locale="no" cancelText="Avbryt" selectText="Velg dato" auto-apply />
+                        </UFormGroup>
+                        <UFormGroup label="Til" name="to" class="mb-3">
+                            <VueDatePicker v-model="editedCouncil.to" :format="format" :teleport="true" locale="no" cancelText="Avbryt" selectText="Velg dato" auto-apply />
+                        </UFormGroup>
+                    </UForm>
+                    <template #footer>
+                        <template class="flex justify-between">
+                            <UButton icon="i-heroicons-trash" size="sm" color="red" variant="outline" label="Slett" :trailing="false" />
+                            <UButton icon="i-heroicons-pencil-square" size="sm" color="primary" variant="solid" label="Lagre" :trailing="false" @click="submitFormEditCouncil" />
+                        </template>
+                    </template>
+                </UCard>
+            </UModal>
         </div>
     </div>
     <div class="mt-8 flow-root">
         <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
             <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                <USelectMenu v-model="selectedCouncil" :options="councils" class="mb-2" :searchable="search" creatable>
-                    <template #label>
-                        <span v-if="selectedCouncil">{{ format(new Date(selectedCouncil.from)) }} - {{ format(new Date(selectedCouncil.to)) }}</span>
-                        <span v-else>Velg kommunestyre</span>
-                    </template>
-                    <template #option="{ option: council }">
-                        <span>{{ format(new Date(council.from)) }} - {{ format(new Date(council.to)) }}</span>
-                    </template>
-                </USelectMenu>
+                <div class="flex flex-row-reverse mb-2">
+                    <div v-if="selectedCouncil" class="basis-1/7 ml-2">
+                        <UButton label="Detaljer" @click="openModalViewCouncil" block />
+                    </div>
+                    <div class="basis-1/4">
+                        <USelectMenu v-model="selectedCouncil" :options="councils" :searchable="search" creatable>
+                            <template #label>
+                                <span v-if="selectedCouncil">{{ format(new Date(selectedCouncil.from)) }} - {{ format(new Date(selectedCouncil.to)) }}</span>
+                                <span v-else>Velg kommunestyre</span>
+                            </template>
+                            <template #option="{ option: council }">
+                                <span>{{ format(new Date(council.from)) }} - {{ format(new Date(council.to)) }}</span>
+                            </template>
+                        </USelectMenu>
+                    </div>
+                </div>
                 <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg mb-[500px]">
                     <table class="min-w-full divide-y divide-gray-300">
                         <thead class="bg-white">
@@ -101,9 +133,33 @@ const search = async (q) => {
     })
 }
 
+const validate = (state) => {
+    const errors = []
+    if (!state.from) errors.push({ path: 'from', message: 'Påkrevet' })
+    if (!state.to) errors.push({ path: 'to', message: 'Påkrevet' })
+    return errors
+}
+
+const formEditCouncil = ref(null)
+
+const submitFormEditCouncil = async () => {
+    formEditCouncil.value.validate().then((success) => {
+        if (success) editCouncil()
+    }).catch(() => {
+        errorMessage.value = 'Kunne ikke lagre endringer, sjekk at alle feltene er fylt ut korrekt.'
+    })
+}
+
 const modalNewCouncilIsOpen = ref(false)
+const modalViewCouncilIsOpen = ref(false)
 
 const newCouncil = ref({
+    from: new Date(),
+    to: new Date(new Date().setFullYear(new Date().getFullYear() + 4))
+})
+
+const editedCouncil = ref({
+    id: undefined,
     from: new Date(),
     to: new Date(new Date().setFullYear(new Date().getFullYear() + 4))
 })
@@ -115,6 +171,16 @@ function openModalNewCouncil() {
     }
     modalNewCouncilIsOpen.value = true
 }
+
+function openModalViewCouncil() {
+    editedCouncil.value = {
+        id: selectedCouncil.value.id,
+        from: selectedCouncil.value.from,
+        to: selectedCouncil.value.to
+    }
+    modalViewCouncilIsOpen.value = true
+}
+
 
 async function addCouncil() {
     const { data, error } = await supabase
@@ -133,6 +199,25 @@ async function addCouncil() {
     else {
         getCouncils()
         modalNewCouncilIsOpen.value = false
+    }
+}
+
+async function editCouncil() {
+    const { data, error } = await supabase
+        .from('Councils')
+        .update({
+            from: editedCouncil.value.from,
+            to: editedCouncil.value.to
+        })
+        .eq('id', editedCouncil.value.id)
+        .select()
+
+    if (error) {
+        errorMessage.value = error.message
+    }
+    else {
+        getCouncils()
+        modalViewCouncilIsOpen.value = false
     }
 }
 

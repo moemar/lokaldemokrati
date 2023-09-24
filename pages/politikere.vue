@@ -5,51 +5,7 @@
             <p class="mt-2 text-sm text-gray-700">Oversikt over alle politikere tilknyttet kommunen.</p>
         </div>
         <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-            <UButton label="Ny politiker" @click="openModalNewPolitician" />
-            <UModal v-model="modalNewPoliticianIsOpen">
-                <UCard :ui="{ divide: 'divide-y divide-gray-100 dark:divide-gray-800' }">
-                    <template #header>
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">Ny politiker</h3>
-                            <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark-20-solid" class="-my-1" @click="modalNewPoliticianIsOpen = false" />
-                        </div>
-                    </template>
-                    <UAlert v-show="errorMessage" :description="errorMessage" class="mb-3" color="red" variant="subtle" />
-                    <UForm :validate="validate" :state="newPolitician" @submit="addPolitician">
-                        <UFormGroup label="Navn" name="name" class="mb-3">
-                            <UInput v-model="newPolitician.name" />
-                        </UFormGroup>
-                        <UFormGroup label="Parti" name="party" class="mb-3">
-                            <USelect v-model="newPolitician.party" :options="parties" option-attribute="name" value-attribute="id" />
-                        </UFormGroup>
-                        <UButton type="submit">Lagre</UButton>
-                    </UForm>
-                    <template #footer>
-                    </template>
-                </UCard>
-            </UModal>
-            <UModal v-model="modalEditPoliticianIsOpen">
-                <UCard :ui="{ divide: 'divide-y divide-gray-100 dark:divide-gray-800' }">
-                    <template #header>
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">Endre politiker</h3>
-                            <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark-20-solid" class="-my-1" @click="modalEditPoliticianIsOpen = false" />
-                        </div>
-                    </template>
-                    <UAlert v-show="errorMessage" :description="errorMessage" class="mb-3" color="red" variant="subtle" />
-                    <UForm :validate="validate" :state="editedPolitician" @submit="editPolitician">
-                        <UFormGroup label="Navn" name="name" class="mb-3">
-                            <UInput v-model="editedPolitician.name" />
-                        </UFormGroup>
-                        <UFormGroup label="Parti" name="party" class="mb-3">
-                            <USelect v-model="editedPolitician.party" :options="parties" option-attribute="name" value-attribute="id" />
-                        </UFormGroup>
-                        <UButton type="submit">Lagre</UButton>
-                    </UForm>
-                    <template #footer>
-                    </template>
-                </UCard>
-            </UModal>
+            <PoliticianNew button-text="Ny politiker" />
         </div>
     </div>
     <div class="mt-8 flow-root">
@@ -61,7 +17,7 @@
                             <tr>
                                 <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-3">Navn</th>
                                 <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-3">
-                                    <span class="sr-only">Edit</span>
+                                    <span class="sr-only">Endre</span>
                                 </th>
                             </tr>
                         </thead>
@@ -73,8 +29,8 @@
                                 <tr v-for="(politician, politicianIdx) in party.Politicians" :key="politician.id" :class="[politicianIdx === 0 ? 'border-gray-300' : 'border-gray-200', 'border-t']">
                                     <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-3">{{ politician.name }}</td>
                                     <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-3">
-                                        <a href="#" class="text-indigo-600 hover:text-indigo-900" @click="openModalEditPolitician(politician, party.id)">Endre<span class="sr-only">, {{ politician.name }}</span></a> |
-                                        <a href="#" class="text-indigo-600 hover:text-indigo-900" @click="deletePolitician(politician.id)">Slett<span class="sr-only">, {{ politician.name }}</span></a>
+                                        <PoliticianEdit button-label="Endre" button-color="sky" button-variant="outline" :politician="politician" :party="party" />
+                                        <ItemDelete :title="`Slett ${politician.name}?`" :text="`Ønsker du virkelig å slette <b>${politician.name}</b>?`" button-color="rose" button-variant="outline" button-label="Slett" :id="politician.id" entity="Politicians" class="ml-2" />
                                     </td>
                                 </tr>
                             </template>
@@ -89,109 +45,27 @@
 <script setup>
 const supabase = useSupabaseClient()
 const parties = ref([])
-const errorMessage = ref(undefined)
-
-const modalNewPoliticianIsOpen = ref(false)
-const modalEditPoliticianIsOpen = ref(false)
-
-const validate = (state) => {
-    const errors = []
-    if (!state.name) errors.push({ path: 'name', message: 'Påkrevet' })
-    if (!state.party) errors.push({ path: 'party', message: 'Påkrevet' })
-    return errors
-}
-
-const newPolitician = ref({
-    name: undefined,
-    party: undefined
-})
-
-const editedPolitician = ref({
-    id: undefined,
-    name: undefined,
-    party: undefined
-})
-
-function openModalNewPolitician() {
-    newPolitician.value = {
-        name: undefined,
-        party: undefined
-    }
-    modalNewPoliticianIsOpen.value = true
-}
-
-function openModalEditPolitician(politician, party) {
-    editedPolitician.value.id = politician.id
-    editedPolitician.value.name = politician.name
-    editedPolitician.value.party = party
-    modalEditPoliticianIsOpen.value = true
-}
-
-async function addPolitician() {
-    const { data, error } = await supabase
-        .from('Politicians')
-        .insert([
-            {
-                name: newPolitician.value.name,
-                party: newPolitician.value.party
-            }
-        ])
-        .select()
-
-    if (error) {
-        errorMessage.value = error.message
-    }
-    else {
-        getParties()
-        modalNewPoliticianIsOpen.value = false
-    }
-}
-
-async function editPolitician() {
-    const { data, error } = await supabase
-        .from('Politicians')
-        .update({
-            name: editedPolitician.value.name,
-            party: editedPolitician.value.party
-        })
-        .eq('id', editedPolitician.value.id)
-        .select()
-
-    if (error) {
-        errorMessage.value = error.message
-    }
-    else {
-        getParties()
-        modalEditPoliticianIsOpen.value = false
-    }
-}
-
-async function deletePolitician(id) {
-    const { error } = await supabase
-        .from('Politicians')
-        .delete()
-        .eq('id', id)
-
-    if (error) {
-        errorMessage.value = error.message
-    }
-    else {
-        getParties()
-    }
-}
 
 async function getParties() {
-    let { data, error } = await supabase
+    let { data } = await supabase
         .from('Parties')
         .select(`
             id, name, short_name,
             Politicians (
-                id, name
+                id, name, party
             )`)
         .order('name')
 
     parties.value = data
 }
+
+supabase.channel('custom-all-channel')
+    .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'Politicians' },
+        () => { getParties() }
+    )
+    .subscribe()
 
 onMounted(() => {
     getParties()

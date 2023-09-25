@@ -5,7 +5,7 @@
             <p class="mt-2 text-sm text-gray-700">Oversikt over alle politikere tilknyttet kommunen.</p>
         </div>
         <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-            <PoliticianNew button-text="Ny politiker" />
+            <PoliticianNew button-label="Ny politiker" />
         </div>
     </div>
     <div class="mt-8 flow-root">

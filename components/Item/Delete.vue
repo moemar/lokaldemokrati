@@ -73,7 +73,7 @@ async function doDelete() {
         .delete()
         .eq('id', props.id)
 
-    if (error) errorMessage.value = error.message
+    if (error) errorMessage.value = error.details
     else modalIsOpen.value = false
 }
 </script>

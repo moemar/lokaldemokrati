@@ -1,5 +1,5 @@
 <template>
-    <UButton :label="buttonLabel" :color="buttonColor" @click="openModal" />
+    <UButton :label="buttonLabel" :color="buttonColor" :variant="buttonVariant" @click="openModal" :class="class" />
     <UModal v-model="modalIsOpen">
         <UCard :ui="{ divide: 'divide-y divide-gray-100 dark:divide-gray-800' }">
             <template #header>
@@ -9,12 +9,12 @@
                 </div>
             </template>
             <UAlert v-show="errorMessage" :description="errorMessage" class="mb-3" color="red" variant="subtle" />
-            <UForm ref="form" :validate="validate" :state="politician">
+            <UForm ref="form" :validate="validate" :state="item">
                 <UFormGroup label="Navn" name="name" class="mb-3">
-                    <UInput v-model="politician.name" />
+                    <UInput v-model="item.name" />
                 </UFormGroup>
                 <UFormGroup label="Parti" name="party" class="mb-3">
-                    <USelect v-model="politician.party" :options="parties" option-attribute="name" value-attribute="id" />
+                    <USelect v-model="item.party" :options="parties" option-attribute="name" value-attribute="id" />
                 </UFormGroup>
             </UForm>
             <template #footer>
@@ -35,6 +35,10 @@ const form = ref(null)
 const modalIsOpen = ref(false)
 
 const props = defineProps({
+    party: {
+        type: Number,
+        default: undefined
+    },
     buttonLabel: {
         type: String,
         default: 'Ny politiker'
@@ -43,13 +47,20 @@ const props = defineProps({
         type: String,
         default: 'primary'
     },
+    buttonVariant: {
+        type: String,
+        default: 'solid'
+    },
     title: {
         type: String,
         default: 'Ny politiker'
+    },
+    class: {
+        type: String
     }
 })
 
-const politician = ref({
+const item = ref({
     name: undefined,
     party: undefined
 })
@@ -63,28 +74,28 @@ const validate = (state) => {
 
 const submitForm = async () => {
     form.value.validate().then((success) => {
-        if (success) addPolitician()
+        if (success) addItem()
     }).catch(() => {
         errorMessage.value = 'Kunne ikke lagre endringer, sjekk at alle feltene er fylt ut korrekt.'
     })
 }
 
 function openModal() {
-    politician.value = {
+    item.value = {
         name: undefined,
-        party: undefined
+        party: props.party
     }
     errorMessage.value = undefined
     modalIsOpen.value = true
 }
 
-async function addPolitician() {
-    const { data, error } = await supabase
+async function addItem() {
+    const { error } = await supabase
         .from('Politicians')
         .insert([
             {
-                name: politician.value.name,
-                party: politician.value.party
+                name: item.value.name,
+                party: item.value.party
             }
         ])
         .select()

@@ -1,5 +1,5 @@
 <template>
-    <UButton :label="buttonLabel" :color="buttonColor" :variant="buttonVariant" @click="openModal" />
+    <UButton :label="buttonLabel" :color="buttonColor" :variant="buttonVariant" @click="openModal" :class="class" />
     <UModal v-model="modalIsOpen">
         <UCard :ui="{ divide: 'divide-y divide-gray-100 dark:divide-gray-800' }">
             <template #header>
@@ -52,6 +52,9 @@ const props = defineProps({
     title: {
         type: String,
         default: 'Endre parti'
+    },
+    class: {
+        type: String
     }
 })
 

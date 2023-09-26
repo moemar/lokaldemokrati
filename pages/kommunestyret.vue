@@ -73,6 +73,9 @@
                                 </template>
                             </USelectMenu>
                         </UFormGroup>
+                        <UFormGroup label="Rolle" name="role" class="mb-3">
+                            <USelect v-model="selectedRole" :options="roles" option-attribute="name" value-attribute="id" placeholder="Velg rolle" />
+                        </UFormGroup>
                     </UForm>
                     <template #footer>
                         <template class="flex flex-row-reverse">
@@ -86,10 +89,10 @@
     <div class="mt-8 flow-root">
         <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
             <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                <UButton label="Nytt medlem" @click="openModalNewCouncilMember" />
+                <UButton label="Nytt kommunestyre" @click="openModalNewCouncil" />
                 <div class="flex flex-row-reverse mb-2">
                     <div class="ml-2">
-                        <UButton label="Nytt kommunestyre" @click="openModalNewCouncil" />
+                        <UButton label="Nytt medlem" @click="openModalNewCouncilMember" />
                     </div>
                     <div v-if="selectedCouncil" class="ml-2">
                         <UButton label="Detaljer" @click="openModalViewCouncil" block />
@@ -112,12 +115,14 @@
                             <tr>
                                 <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Politiker</th>
                                 <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Parti</th>
+                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Rolle</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white">
                             <tr v-for="(councilMember, councilMemberIdx) in councilMembers" :key="councilMember.id" :class="[councilMemberIdx === 0 ? 'border-gray-300' : 'border-gray-200', 'border-t']">
                                 <td class="whitespace-nowrap px-3 py-4 text-sm">{{ councilMember.Politicians.name }}</td>
                                 <td class="whitespace-nowrap px-3 py-4 text-sm">{{ councilMember.Politicians.Parties.name }}</td>
+                                <td class="whitespace-nowrap px-3 py-4 text-sm">{{ councilMember.CouncilMemberRoles.name }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -135,8 +140,10 @@ const supabase = useSupabaseClient()
 const councils = ref([])
 const councilMembers = ref([])
 const politicians = ref([])
+const roles = ref([])
 const selectedCouncil = ref(undefined)
 const selectedPolitician = ref(undefined)
+const selectedRole = ref(undefined)
 const errorMessage = ref(undefined)
 
 const format = (date) => {
@@ -168,10 +175,18 @@ const validate = (state) => {
 }
 
 const formEditCouncil = ref(null)
-
 const submitFormEditCouncil = async () => {
     formEditCouncil.value.validate().then((success) => {
         if (success) editCouncil()
+    }).catch(() => {
+        errorMessage.value = 'Kunne ikke lagre endringer, sjekk at alle feltene er fylt ut korrekt.'
+    })
+}
+
+const formNewCouncilMember = ref(null)
+const submitFormNewCouncilMember = async () => {
+    formNewCouncilMember.value.validate().then((success) => {
+        if (success) addCouncilMember()
     }).catch(() => {
         errorMessage.value = 'Kunne ikke lagre endringer, sjekk at alle feltene er fylt ut korrekt.'
     })
@@ -194,7 +209,8 @@ const editedCouncil = ref({
 
 const newCouncilMember = ref({
     politician: undefined,
-    council: undefined
+    council: undefined,
+    role: undefined
 })
 
 function openModalNewCouncil() {
@@ -216,10 +232,15 @@ function openModalViewCouncil() {
 
 function openModalNewCouncilMember() {
     selectedPolitician.value = undefined
+    selectedRole.value = undefined
+
     if (!politicians.value || politicians.value.length == 0) getPoliticians()
+    if (!roles.value || roles.value.length == 0) getRoles()
+
     newCouncilMember.value = {
         politician: undefined,
-        council: undefined
+        council: selectedCouncil.value.id,
+        role: undefined
     }
     modalNewCouncilMemberIsOpen.value = true
 }
@@ -242,6 +263,27 @@ async function addCouncil() {
         selectedCouncil.value = data[0]
         getCouncils()
         modalNewCouncilIsOpen.value = false
+    }
+}
+
+async function addCouncilMember() {
+    const { error } = await supabase
+        .from('CouncilMembers')
+        .insert([
+            {
+                politician: selectedPolitician.value.id,
+                council: newCouncilMember.value.council,
+                role: selectedRole.value
+            }
+        ])
+        .select()
+
+    if (error) {
+        errorMessage.value = error.message
+    }
+    else {
+        getCouncilMembers()
+        modalNewCouncilMemberIsOpen.value = false
     }
 }
 
@@ -301,14 +343,26 @@ async function getPoliticians() {
     politicians.value = data
 }
 
+async function getRoles() {
+    let { data } = await supabase
+        .from('CouncilMemberRoles')
+        .select('id,name,rank')
+        .order('rank')
+
+    roles.value = data
+}
+
 async function getCouncilMembers() {
     let { data } = await supabase
         .from('CouncilMembers')
         .select(`
             id,
-            Politicians (id, name, Parties (id, name))
+            Politicians (id, name, Parties (id, name)),
+            CouncilMemberRoles (id, name, rank)
         `)
         .eq('council', selectedCouncil.value.id)
+        .order('role')
+        .order('name', { foreignTable: 'Politicians' })
 
     councilMembers.value = data
 }

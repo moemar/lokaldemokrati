@@ -10,17 +10,17 @@
             </template>
             <UAlert v-show="errorMessage" :description="errorMessage" class="mb-3" color="red" variant="subtle" />
             <UForm ref="form" :validate="validate" :state="item">
-                <UFormGroup label="Navn" name="name" class="mb-3">
-                    <UInput v-model="item.name" />
+                <UFormGroup label="Fra" name="from" class="mb-3">
+                    <VueDatePicker v-model="item.from" :format="format" :teleport="true" locale="no" cancelText="Avbryt" selectText="Velg dato" auto-apply />
                 </UFormGroup>
-                <UFormGroup label="Forkortelse" name="short_name" class="mb-3">
-                    <UInput v-model="item.short_name" />
+                <UFormGroup label="Til" name="to" class="mb-3">
+                    <VueDatePicker v-model="item.to" :format="format" :teleport="true" locale="no" cancelText="Avbryt" selectText="Velg dato" auto-apply />
                 </UFormGroup>
             </UForm>
             <template #footer>
                 <template class="flex justify-between">
-                    <UButton icon="i-heroicons-x-circle" size="sm" color="rose" variant="outline" label="Avbryt" :trailing="false" @click="modalIsOpen = false" />
-                    <UButton icon="i-heroicons-pencil-square" size="sm" color="primary" variant="solid" label="Lagre" @click="submitForm" />
+                    <UButton icon="i-heroicons-trash" size="sm" color="red" variant="outline" label="Slett" :trailing="false" @click="deleteItem(item.id)" />
+                    <UButton icon="i-heroicons-pencil-square" size="sm" color="primary" variant="solid" label="Lagre" :trailing="false" @click="submitForm" />
                 </template>
             </template>
         </UCard>
@@ -28,13 +28,16 @@
 </template>
 
 <script setup>
+import VueDatePicker from '@vuepic/vue-datepicker'
+import '@vuepic/vue-datepicker/dist/main.css'
+
 const supabase = useSupabaseClient()
 const errorMessage = ref(undefined)
 const form = ref(null)
 const modalIsOpen = ref(false)
 
 const props = defineProps({
-    party: {
+    council: {
         type: Object
     },
     buttonLabel: {
@@ -51,23 +54,30 @@ const props = defineProps({
     },
     title: {
         type: String,
-        default: 'Endre parti'
+        default: 'Endre kommunestyre'
     },
     class: {
         type: String
     }
 })
 
+const format = (date) => {
+    const day = String(date.getDate()).padStart(2, '0')
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const year = date.getFullYear()
+    return `${day}.${month}.${year}`
+}
+
 const item = ref({
     id: undefined,
-    name: undefined,
-    short_name: undefined
+    from: new Date(),
+    to: new Date(new Date().setFullYear(new Date().getFullYear() + 4))
 })
 
 const validate = (state) => {
     const errors = []
-    if (!state.name) errors.push({ path: 'name', message: 'Navn må fylles ut' })
-    if (!state.short_name) errors.push({ path: 'short_name', message: 'Forkortelse må fylles ut' })
+    if (!state.from) errors.push({ path: 'from', message: 'Påkrevet' })
+    if (!state.to) errors.push({ path: 'to', message: 'Påkrevet' })
     return errors
 }
 
@@ -81,25 +91,36 @@ const submitForm = async () => {
 
 function openModal() {
     item.value = {
-        id: props.party.id,
-        name: props.party.name,
-        short_name: props.party.short_name
+        id: props.council.id,
+        from: props.council.from,
+        to: props.council.to
     }
+
     errorMessage.value = undefined
     modalIsOpen.value = true
 }
 
 async function editItem() {
     const { error } = await supabase
-        .from('Parties')
+        .from('Councils')
         .update({
-            name: item.value.name,
-            short_name: item.value.short_name
+            from: item.value.from,
+            to: item.value.to
         })
         .eq('id', item.value.id)
         .select()
 
     if (error) errorMessage.value = error.message
+    else modalIsOpen.value = false
+}
+
+async function deleteItem(id) {
+    const { error } = await supabase
+        .from('Councils')
+        .delete()
+        .eq('id', id)
+
+    if (error) errorMessage.value = error.details
     else modalIsOpen.value = false
 }
 </script>

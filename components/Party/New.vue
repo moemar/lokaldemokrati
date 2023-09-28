@@ -76,12 +76,13 @@ function openModal() {
         name: undefined,
         short_name: undefined
     }
+
     errorMessage.value = undefined
     modalIsOpen.value = true
 }
 
 async function addItem() {
-    const { data, error } = await supabase
+    const { error } = await supabase
         .from('Parties')
         .insert([
             {

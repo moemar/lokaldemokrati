@@ -5,6 +5,9 @@
                 <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Politiker</th>
                 <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Parti</th>
                 <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Rolle</th>
+                <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-3">
+                    <span class="sr-only">Fjern</span>
+                </th>
             </tr>
         </thead>
         <tbody class="bg-white">
@@ -12,6 +15,9 @@
                 <td class="whitespace-nowrap px-3 py-4 text-sm">{{ councilMember.Politicians.name }}</td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm">{{ councilMember.Politicians.Parties.name }}</td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm">{{ councilMember.CouncilMemberRoles.name }}</td>
+                <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-3">
+                    <ItemDelete :title="`Fjern ${councilMember.Politicians.name}?`" :text="`Ønsker du virkelig å fjerne <b>${councilMember.Politicians.name}</b>?`" button-color="rose" button-variant="outline" button-label="Fjern" :id="councilMember.id" entity="CouncilMembers" class="ml-2" />
+                </td>
             </tr>
         </tbody>
     </table>

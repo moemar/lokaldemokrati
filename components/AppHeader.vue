@@ -36,9 +36,9 @@ const isCurrentPath = (path: string) => {
 
 const navigation = ref([
     { name: 'Dashboard', href: '/' },
-    { name: 'Kommunestyret', href: '/kommunestyret' },
-    { name: 'Saker', href: '/saker' },
-    { name: 'Partier', href: '/partier' },
-    { name: 'Politikere', href: '/politikere' },
+    { name: 'Kommunestyret', href: '/councils' },
+    { name: 'Møter', href: '/council-meetings' },
+    { name: 'Partier', href: '/parties' },
+    { name: 'Politikere', href: '/politicians' },
 ])
 </script>

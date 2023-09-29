@@ -13,7 +13,7 @@
             <template #footer>
                 <template class="flex justify-between">
                     <UButton icon="i-heroicons-x-circle" size="sm" color="rose" variant="outline" label="Avbryt" :trailing="false" @click="modalIsOpen = false" />
-                    <UButton icon="i-heroicons-trash" size="sm" color="rose" variant="solid" label="Slett" @click="doDelete()" />
+                    <UButton icon="i-heroicons-trash" size="sm" color="rose" variant="solid" :label="buttonLabel" @click="doDelete()" />
                 </template>
             </template>
         </UCard>

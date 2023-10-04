@@ -11,6 +11,7 @@
                 <div class="flex flex-row-reverse mb-2">
                     <div class="ml-2">
                         <CouncilMeetingNew v-if="councilList?.selectedCouncil" :council="councilList?.selectedCouncil" button-label="Nytt møte" title="Nytt kommunstyremøte" />
+                        <CouncilMeetingImport v-if="councilList?.selectedCouncil" :council="councilList?.selectedCouncil" button-label="Import" button-color="blue" title="Importer kommunestyremøter fra Acos" class="ml-2" />
                     </div>
                     <div class="basis-1/4">
                         <CouncilList ref="councilList" />

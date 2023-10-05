@@ -8,43 +8,25 @@
                     <UButton color="gray" variant="ghost" icon="i-heroicons-x-mark-20-solid" class="-my-1" @click="modalIsOpen = false" />
                 </div>
             </template>
-            <div class="flex flex-row-reversed mb-6">
-                <UInput v-model="year" placeholder="Årstall" :required="true" class="mr-2" />
-                <UButton :loading="loading" icon="i-heroicons-arrow-down-tray" size="sm" color="blue" variant="outline" label="Hent møter" :trailing="false" @click="getCouncilMeetings" />
+            <div class="flex justify-end border-b mb-2 pb-6">
+                <UInput v-model="year" :loading="loading" placeholder="Årstall" :required="true" class="mr-2" />
+                <UButton :disabled="!year" :loading="loading" icon="i-heroicons-cloud-arrow-down" size="sm" color="blue" variant="outline" label="Hent møter" :trailing="false" @click="getCouncilMeetings" />
             </div>
-            <UTable :loading="loading" :rows="rows" :columns="columns" />
-            <UPagination v-if="rows && rows.length > 0" v-model="page" :page-count="pageCount" :total="meetings.length" class="mt-4" />
-            <!-- <table class="min-w-full divide-y divide-gray-300">
-                <thead class="bg-white">
-                    <tr>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">ID</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Uke</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Dato</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Fra</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Til</th>
-                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
-                        <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-3">
-                            <span class="sr-only">Fjern</span>
-                        </th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white">
-                    <tr v-for="(meeting, meetingIdx) in meetings" :key="meeting.Id" :class="[meetingIdx === 0 ? 'border-gray-300' : 'border-gray-200', 'border-t']">
-                        <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ meeting.Id }}</td>
-                        <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ meeting.Week }}</td>
-                        <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ meeting.Date }}</td>
-                        <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ meeting.TimeFrom }}</td>
-                        <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ meeting.TimeTo }}</td>
-                        <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ meeting.Status }}</td>
-                        <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-3">
-                        </td>
-                    </tr>
-                </tbody>
-            </table>-->
+            <div v-if="rows && rows.length > 0">
+                <UTable :loading="loading" :rows="rows" :columns="columns" v-model="selectedMeetings" @select="select">
+                    <template #imported-data="{ row }">
+                        OK
+                    </template>
+                </UTable>
+                <div class="flex justify-center">
+                    <UPagination v-model="page" :page-count="pageCount" :total="meetings.length" class="mt-4" />
+                </div>
+                <UAlert v-show="errorMessage" :description="errorMessage" class="mt-5" color="red" variant="subtle" />
+            </div>
             <template #footer>
                 <template class="flex justify-between">
                     <UButton icon="i-heroicons-x-circle" size="sm" color="rose" variant="outline" label="Avbryt" :trailing="false" @click="modalIsOpen = false" />
-                    <UButton icon="i-heroicons-pencil-square" size="sm" color="primary" variant="solid" label="Lagre" :trailing="false" @click="submitForm" />
+                    <UButton :disabled="!(selectedMeetings && selectedMeetings.length > 0)" icon="i-heroicons-arrow-down-tray" size="sm" color="primary" variant="solid" :label="`Importer (${selectedMeetings.length})`" :trailing="false" @click="addItems" />
                 </template>
             </template>
         </UCard>
@@ -52,9 +34,11 @@
 </template>
 
 <script setup>
+const supabase = useSupabaseClient()
 const errorMessage = ref(undefined)
 const modalIsOpen = ref(false)
 const meetings = ref([])
+const selectedMeetings = ref([])
 const year = ref('')
 const loading = ref(false)
 const page = ref(1)
@@ -62,7 +46,7 @@ const pageCount = 5
 
 const columns = [{
     key: 'Id',
-    label: 'ID'
+    label: 'Id'
 }, {
     key: 'Week',
     label: 'Uke'
@@ -78,6 +62,9 @@ const columns = [{
 }, {
     key: 'Status',
     label: 'Status'
+}, {
+    key: 'imported',
+    label: 'Importert'
 }]
 
 const rows = computed(() => {
@@ -105,9 +92,21 @@ const props = defineProps({
     }
 })
 
+function select(row) {
+    const index = selectedMeetings.value.findIndex((item) => item.Id === row.Id)
+    if (index === -1) {
+        selectedMeetings.value.push(row)
+    } else {
+        selectedMeetings.value.splice(index, 1)
+    }
+}
+
 function openModal() {
     errorMessage.value = undefined
     modalIsOpen.value = true
+    meetings.value = []
+    selectedMeetings.value = []
+    year.value = new Date().getFullYear()
 }
 
 async function getCouncilMeetings() {
@@ -123,18 +122,31 @@ async function getCouncilMeetings() {
     loading.value = false
 }
 
-// async function addItem() {
-//     const { error } = await supabase
-//         .from('CouncilMeetings')
-//         .insert([
-//             {
-//                 date: item.value.date,
-//                 council: item.value.council
-//             }
-//         ])
-//         .select()
+async function addItems() {
+    loading.value = true
+    errorMessage.value = undefined
 
-//     if (error) errorMessage.value = error.message
-//     else modalIsOpen.value = false
-// }
+    const convertFormat = date => {
+        const parts = date.split('.');
+        return `${parts[1]}.${parts[0]}.${parts[2]}`;
+    }
+
+    const { error } = await supabase
+        .from('CouncilMeetings')
+        .insert(selectedMeetings.value.map((item) => {
+            return {
+                council: props.council.id,
+                acos_id: item.Id,
+                date: convertFormat(item.Date),
+                time_from: item.TimeFrom.replace('.', ':'),
+                time_to: item.TimeTo.replace('.', ':')
+            }
+        }))
+        .select()
+
+    if (error) errorMessage.value = error.message
+    else modalIsOpen.value = false
+
+    loading.value = false
+}
 </script>

@@ -17,9 +17,7 @@
                         <CouncilList ref="councilList" />
                     </div>
                 </div>
-                <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg mb-[500px]">
-                    <CouncilMeetingList :council="councilList?.selectedCouncil?.id" />
-                </div>
+                <CouncilMeetingList :council="councilList?.selectedCouncil?.id" />
             </div>
         </div>
     </div>

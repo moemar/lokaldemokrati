@@ -14,8 +14,43 @@
             </div>
             <div v-if="rows && rows.length > 0">
                 <UTable :loading="loading" :rows="rows" :columns="columns" v-model="selectedMeetings" @select="select">
+                    <template #Id-data="{ row }">
+                        <div :class="row.imported ? 'text-green-600' : ''">
+                            {{ row.Id }}
+                        </div>
+                    </template>
+                    <template #Week-data="{ row }">
+                        <div :class="row.imported ? 'text-green-600' : ''">
+                            {{ row.Week }}
+                        </div>
+                    </template>
+                    <template #Date-data="{ row }">
+                        <div :class="row.imported ? 'text-green-600' : ''">
+                            {{ row.Date }}
+                        </div>
+                    </template>
+                    <template #TimeTo-data="{ row }">
+                        <div :class="row.imported ? 'text-green-600' : ''">
+                            {{ row.TimeTo }}
+                        </div>
+                    </template>
+                    <template #TimeFrom-data="{ row }">
+                        <div :class="row.imported ? 'text-green-600' : ''">
+                            {{ row.TimeFrom }}
+                        </div>
+                    </template>
+                    <template #Status-data="{ row }">
+                        <div :class="row.imported ? 'text-green-600' : ''">
+                            {{ row.Status }}
+                        </div>
+                    </template>
                     <template #imported-data="{ row }">
-                        OK
+                        <div v-if="row.imported" class="text-green-600 text-center">
+                            <UIcon name="i-heroicons-check" />
+                        </div>
+                        <div v-else class="text-red-600 text-center">
+                            <UIcon name="i-heroicons-minus" />
+                        </div>
                     </template>
                 </UTable>
                 <div class="flex justify-center">
@@ -39,6 +74,7 @@ const errorMessage = ref(undefined)
 const modalIsOpen = ref(false)
 const meetings = ref([])
 const selectedMeetings = ref([])
+const registeredMeetings = ref([])
 const year = ref('')
 const loading = ref(false)
 const page = ref(1)
@@ -46,7 +82,7 @@ const pageCount = 5
 
 const columns = [{
     key: 'Id',
-    label: 'Id'
+    label: 'Id',
 }, {
     key: 'Week',
     label: 'Uke'
@@ -64,7 +100,8 @@ const columns = [{
     label: 'Status'
 }, {
     key: 'imported',
-    label: 'Importert'
+    label: 'Importert',
+    class: 'text-center'
 }]
 
 const rows = computed(() => {
@@ -92,7 +129,17 @@ const props = defineProps({
     }
 })
 
+supabase.channel('custom-filter-channel')
+    .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'CouncilMeetings', filter: `council=eq.${props.council?.id}` },
+        () => { getRegisteredCouncilMeetings() }
+    )
+    .subscribe()
+
 function select(row) {
+    if (row.imported) return
+
     const index = selectedMeetings.value.findIndex((item) => item.Id === row.Id)
     if (index === -1) {
         selectedMeetings.value.push(row)
@@ -116,10 +163,37 @@ async function getCouncilMeetings() {
         const { data, error } = await useFetch(`https://prod-248.westeurope.logic.azure.com/workflows/01ae7b8e0c304b25bf22fd9595ecf772/triggers/manual/paths/invoke/council/meetings/${year.value}/OhzR5UFiTk?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=BblAp-ganMBqmWMVObRwrgbyJHV7cu1Gm1P1Gr6y258`)
 
         if (error.value) errorMessage.value = error.value.data
-        else meetings.value = data.value
+        if (data.value) setMeetings(data)
     }
 
     loading.value = false
+}
+
+function setMeetings(data) {
+    meetings.value = data.value.map((item) => {
+        return {
+            ...item,
+            imported: registeredMeetings.value.findIndex((meeting) => meeting.acos_id === item.Id) !== -1,
+            class: 'text-red-600'
+        }
+    })
+}
+
+async function getRegisteredCouncilMeetings() {
+    if (props.council) {
+        let { data } = await supabase
+            .from('CouncilMeetings')
+            .select(`
+                id,
+                acos_id
+            `)
+            .eq('council', props.council.id)
+
+        registeredMeetings.value = data
+    } else {
+        registeredMeetings.value = []
+    }
+    setMeetings(meetings)
 }
 
 async function addItems() {
@@ -145,8 +219,13 @@ async function addItems() {
         .select()
 
     if (error) errorMessage.value = error.message
-    else modalIsOpen.value = false
+    else modalIsOpen.value = true
 
+    selectedMeetings.value = []
     loading.value = false
 }
+
+watch(() => modalIsOpen.value, (newVal, oldVal) => {
+    if (newVal) getRegisteredCouncilMeetings()
+})
 </script>

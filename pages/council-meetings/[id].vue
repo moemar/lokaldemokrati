@@ -1,21 +1,6 @@
 <template>
     <div v-if="councilMeeting" class="lg:flex lg:items-center lg:justify-between">
         <div class="min-w-0 flex-1">
-            <!-- <nav class="flex" aria-label="Breadcrumb">
-                <ol role="list" class="flex items-center space-x-4">
-                    <li>
-                        <div class="flex">
-                            <NuxtLink to="/" class="text-sm font-medium text-gray-500 hover:text-gray-700" aria-current="page">Dashboard</NuxtLink>
-                        </div>
-                    </li>
-                    <li>
-                        <div class="flex items-center">
-                            <ChevronRightIcon class="h-5 w-5 flex-shrink-0 text-gray-400" aria-hidden="true" />
-                            <NuxtLink to="/council-meetings" class="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700">Møter</NuxtLink>
-                        </div>
-                    </li>
-                </ol>
-            </nav> -->
             <h2 class="mt-2 text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">Møte i Kommunestyret den {{ formatDate(councilMeeting.date) }}</h2>
             <div class="mt-1 flex flex-col sm:mt-0 sm:flex-row sm:flex-wrap sm:space-x-6">
                 <div class="mt-2 flex items-center text-sm text-gray-500">
@@ -32,46 +17,6 @@
                 </div>
             </div>
         </div>
-        <!-- <div class="mt-5 flex lg:ml-4 lg:mt-0">
-            <span class="hidden sm:block">
-                <button type="button" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
-                    <PencilIcon class="-ml-0.5 mr-1.5 h-5 w-5 text-gray-400" aria-hidden="true" />
-                    Edit
-                </button>
-            </span>
-
-            <span class="ml-3 hidden sm:block">
-                <button type="button" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
-                    <LinkIcon class="-ml-0.5 mr-1.5 h-5 w-5 text-gray-400" aria-hidden="true" />
-                    View
-                </button>
-            </span>
-
-            <span class="sm:ml-3">
-                <button type="button" class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
-                    <CheckIcon class="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
-                    Publish
-                </button>
-            </span>
-
-            <Menu as="div" class="relative ml-3 sm:hidden">
-                <MenuButton class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:ring-gray-400">
-                    More
-                    <ChevronDownIcon class="-mr-1 ml-1.5 h-5 w-5 text-gray-400" aria-hidden="true" />
-                </MenuButton>
-
-                <transition enter-active-class="transition ease-out duration-200" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
-                    <MenuItems class="absolute right-0 z-10 -mr-1 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                        <MenuItem v-slot="{ active }">
-                        <a href="#" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700']">Edit</a>
-                        </MenuItem>
-                        <MenuItem v-slot="{ active }">
-                        <a href="#" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700']">View</a>
-                        </MenuItem>
-                    </MenuItems>
-                </transition>
-            </Menu>
-        </div> -->
     </div>
 
     <div class="mt-5">
@@ -90,11 +35,36 @@
         </div>
     </div>
 
-    <div v-if="selectedTab === 1" class="mt-8 flow-root">
+    <div v-if="selectedTab === 1" class="mt-4 flow-root">
         <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
             <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
                 <pre>{{ councilMeeting }}</pre>
             </div>
+        </div>
+    </div>
+
+    <div v-if="selectedTab === 2" class="mt-4 flow-root">
+        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg mb-[500px]">
+            <table class="min-w-full divide-y divide-gray-300">
+                <thead class="bg-white">
+                    <tr>
+                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Politiker</th>
+                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Parti</th>
+                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Type</th>
+                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white">
+                    <tr v-for="(councilMember, councilMemberIdx) in filteredCouncilMembers" :key="councilMember.id" :class="[councilMemberIdx === 0 ? 'border-gray-300' : 'border-gray-200', 'border-t']">
+                        <td class="whitespace-nowrap px-3 py-4 text-sm">{{ councilMember.Politicians.name }}</td>
+                        <td class="whitespace-nowrap px-3 py-4 text-sm">{{ councilMember.Politicians.Parties.name }}</td>
+                        <td class="whitespace-nowrap px-3 py-4 text-sm">{{ councilMember.CouncilMemberRoles.name }}</td>
+                        <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-3">
+                            <USelect :options="statuses" option-attribute="name" placeholder="Ikke registrert" />
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </template>
@@ -104,21 +74,26 @@ import {
     ClockIcon,
     CloudIcon,
     CalendarIcon,
-    // CheckIcon,
-    // ChevronDownIcon,
-    // LinkIcon,
-    // PencilIcon,
 } from '@heroicons/vue/20/solid'
-// import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue'
 
 const route = useRoute()
 const supabase = useSupabaseClient()
 const councilMeeting = ref(undefined)
+const councilMembers = ref([])
+const councilMeetingAttendants = ref([])
 
 const tabs = ref([
     { id: 1, name: 'Saksliste', href: '#', current: true },
     { id: 2, name: 'Fremmøte', href: '#', current: false }
 ])
+
+const statuses = [{
+    name: 'Registrert',
+    value: 1
+}, {
+    name: 'Ikke møtt',
+    value: 2
+}]
 
 async function getCouncilMeeting() {
     let { data, error } = await supabase
@@ -129,6 +104,43 @@ async function getCouncilMeeting() {
     if (error) councilMeeting.value = undefined
     else councilMeeting.value = data[0]
 }
+
+async function getCouncilMembers() {
+    let { data, error } = await supabase
+        .from('CouncilMembers')
+        .select(`
+                id,
+                Politicians (id, name, Parties (id, name)),
+                CouncilMemberRoles (id, name, rank)
+            `)
+        .eq('council', councilMeeting.value.council)
+
+    if (error) councilMembers.value = []
+    else councilMembers.value = data
+}
+
+async function getCouncilMeetingAttendance() {
+    let { data, error } = await supabase
+        .from('CouncilMeetingAttendance')
+        .select(`
+                id,
+                CouncilMeetings (id),
+                CouncilMembers (id)
+            `)
+        .eq('CouncilMeetings.id', councilMeeting.value.id)
+
+    if (error) councilMeetingAttendants.value = []
+    else councilMeetingAttendants.value = data
+}
+
+// A computed short hand property that returns filtered council members
+// we only want to show council members that are CouncilMemberRoles id 1,2,3
+// Order by CouncilMemberRoles id first then Politicians.Parties.name second
+const filteredCouncilMembers = computed(() => {
+    return councilMembers.value
+        .filter(councilMember => [1, 2, 3].includes(councilMember.CouncilMemberRoles.id))
+        .sort((a, b) => a.CouncilMemberRoles.id - b.CouncilMemberRoles.id || a.Politicians.Parties.name.localeCompare(b.Politicians.Parties.name))
+})
 
 // A computed short hand property that returns the selected tab id.
 const selectedTab = computed(() => {
@@ -155,6 +167,14 @@ function formatTime(time) {
     const [hour, minute, second] = time.split(':')
     return `${hour}:${minute}`
 }
+
+// Watcher that fetches council members when tab is at id 2
+watch(() => selectedTab.value, async (tabId) => {
+    if (tabId === 2) {
+        getCouncilMembers()
+        getCouncilMeetingAttendance()
+    }
+})
 
 onMounted(() => {
     getCouncilMeeting()

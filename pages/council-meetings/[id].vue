@@ -55,12 +55,12 @@
                     </tr>
                 </thead>
                 <tbody class="bg-white">
-                    <tr v-for="(councilMember, councilMemberIdx) in filteredCouncilMembers" :key="councilMember.id" :class="[councilMemberIdx === 0 ? 'border-gray-300' : 'border-gray-200', 'border-t']">
+                    <tr v-for="(councilMember, councilMemberIdx) in regularCouncilMembers" :key="councilMember.id" :class="[councilMemberIdx === 0 ? 'border-gray-300' : 'border-gray-200', 'border-t']">
                         <td class="whitespace-nowrap px-3 py-4 text-sm">{{ councilMember.Politicians.name }}</td>
                         <td class="whitespace-nowrap px-3 py-4 text-sm">{{ councilMember.Politicians.Parties.name }}</td>
                         <td class="whitespace-nowrap px-3 py-4 text-sm">{{ councilMember.CouncilMemberRoles.name }}</td>
                         <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-3">
-                            <USelect :options="statuses" option-attribute="name" placeholder="Ikke registrert" />
+                            <USelect v-model="councilMember.SelectedStatus" :options="councilMember.Statuses" option-attribute="name" @change="changeStatus($event, councilMember)" />
                         </td>
                     </tr>
                 </tbody>
@@ -81,6 +81,7 @@ const supabase = useSupabaseClient()
 const councilMeeting = ref(undefined)
 const councilMembers = ref([])
 const councilMeetingAttendants = ref([])
+const councilMeetingAttendantStatus = ref([])
 
 const tabs = ref([
     { id: 1, name: 'Saksliste', href: '#', current: true },
@@ -88,6 +89,9 @@ const tabs = ref([
 ])
 
 const statuses = [{
+    name: 'Ikke registrert',
+    value: 0
+}, {
     name: 'Registrert',
     value: 1
 }, {
@@ -116,7 +120,14 @@ async function getCouncilMembers() {
         .eq('council', councilMeeting.value.council)
 
     if (error) councilMembers.value = []
-    else councilMembers.value = data
+    else {
+        // Add statuses to each council member
+        data.forEach(councilMember => {
+            councilMember.Statuses = statuses
+        })
+
+        councilMembers.value = data
+    }
 }
 
 async function getCouncilMeetingAttendance() {
@@ -125,7 +136,8 @@ async function getCouncilMeetingAttendance() {
         .select(`
                 id,
                 CouncilMeetings (id),
-                CouncilMembers (id)
+                CouncilMembers (id),
+                status
             `)
         .eq('CouncilMeetings.id', councilMeeting.value.id)
 
@@ -136,16 +148,61 @@ async function getCouncilMeetingAttendance() {
 // A computed short hand property that returns filtered council members
 // we only want to show council members that are CouncilMemberRoles id 1,2,3
 // Order by CouncilMemberRoles id first then Politicians.Parties.name second
-const filteredCouncilMembers = computed(() => {
+// Add a SelectedStatus property to each council member
+const regularCouncilMembers = computed(() => {
     return councilMembers.value
         .filter(councilMember => [1, 2, 3].includes(councilMember.CouncilMemberRoles.id))
-        .sort((a, b) => a.CouncilMemberRoles.id - b.CouncilMemberRoles.id || a.Politicians.Parties.name.localeCompare(b.Politicians.Parties.name))
+        .sort((a, b) => a.CouncilMemberRoles.rank - b.CouncilMemberRoles.rank || a.Politicians.Parties.name.localeCompare(b.Politicians.Parties.name))
+        .map(councilMember => {
+            councilMember.SelectedStatus = councilMeetingAttendants.value.find(councilMeetingAttendant => councilMeetingAttendant.CouncilMembers.id === councilMember.id)?.status || 0
+            return councilMember
+        })
 })
+
+// const regularCouncilMembers = computed(() => {
+//     return councilMembers.value
+//         .filter(councilMember => [1, 2, 3].includes(councilMember.CouncilMemberRoles.id))
+//         .sort((a, b) => a.CouncilMemberRoles.id - b.CouncilMemberRoles.id || a.Politicians.Parties.name.localeCompare(b.Politicians.Parties.name))
+// })
 
 // A computed short hand property that returns the selected tab id.
 const selectedTab = computed(() => {
     return tabs.value.find(tab => tab.current).id
 })
+
+function changeStatus(e, councilMember) {
+    // Convert e.target.value to number and store as a new variable
+    const status = Number(e.target.value)
+
+    // If the CouncilMeetingAttendance exists, update the status calling the function updateCouncilMeetingAttendance
+    // Else create a new CouncilMeetingAttendance calling the function createCouncilMeetingAttendance
+    const councilMeetingAttendance = councilMeetingAttendants.value.find(councilMeetingAttendant => councilMeetingAttendant.CouncilMembers.id === councilMember.id)
+    if (councilMeetingAttendance) updateCouncilMeetingAttendance(councilMeeting.value.id, councilMember.id, status)
+    else createCouncilMeetingAttendance(councilMeeting.value.id, councilMember.id, status)
+}
+
+
+// Async function that updates the council meeting attendance
+async function updateCouncilMeetingAttendance(councilMeetingId, councilMemberId, status) {
+    let { data, error } = await supabase
+        .from('CouncilMeetingAttendance')
+        .update({ status })
+        .eq('council_meeting', councilMeetingId)
+        .eq('council_member', councilMemberId)
+
+    // if (error) console.log(error)
+    // else console.log(data)
+}
+
+// Async function that creates a new council meeting attendance
+async function createCouncilMeetingAttendance(councilMeetingId, councilMemberId, status) {
+    let { data, error } = await supabase
+        .from('CouncilMeetingAttendance')
+        .insert({ council_meeting: councilMeetingId, council_member: councilMemberId, status })
+
+    // if (error) console.log(error)
+    // else console.log(data)
+}
 
 // Function that changes the tab
 function changeTab(tabId) {

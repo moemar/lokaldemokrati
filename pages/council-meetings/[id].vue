@@ -55,12 +55,13 @@
                     </tr>
                 </thead>
                 <tbody class="bg-white">
-                    <tr v-for="(councilMember, councilMemberIdx) in regularCouncilMembers" :key="councilMember.id" :class="[councilMemberIdx === 0 ? 'border-gray-300' : 'border-gray-200', 'border-t']">
+                    <tr :class="[councilMember.SelectedStatus === 1 ? 'bg-green-50' : councilMember.SelectedStatus === 2 ? 'bg-red-50' : 'bg-slate-50', councilMemberIdx === 0 ? 'border-gray-300' : 'border-gray-200', 'border-t']" v-for="(councilMember, councilMemberIdx) in regularCouncilMembers" :key="councilMember.id">
                         <td class="whitespace-nowrap px-3 py-4 text-sm">{{ councilMember.Politicians.name }}</td>
                         <td class="whitespace-nowrap px-3 py-4 text-sm">{{ councilMember.Politicians.Parties.name }}</td>
                         <td class="whitespace-nowrap px-3 py-4 text-sm">{{ councilMember.CouncilMemberRoles.name }}</td>
                         <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-3">
                             <USelect v-model="councilMember.SelectedStatus" :options="councilMember.Statuses" option-attribute="name" @change="changeStatus($event, councilMember)" />
+                            <USelect v-if="councilMember.SelectedStatus === 2" v-model="councilMember.ReplacementMember" class="mt-2" :options="substituteCouncilMembers(councilMember.Politicians.Parties.id)" value-attribute="id" option-attribute="Politicians.name" placeholder="Velg varamedlem" @change="updateReplacementMember($event, councilMember)" />
                         </td>
                     </tr>
                 </tbody>
@@ -136,10 +137,15 @@ async function getCouncilMeetingAttendance() {
         .select(`
                 id,
                 CouncilMeetings (id),
-                CouncilMembers (id),
+                CouncilMember:CouncilMembers!council_member (id),
+                CouncilMemberReplacement:CouncilMembers!replacement_council_member (id),
                 status
             `)
         .eq('CouncilMeetings.id', councilMeeting.value.id)
+
+    // Filter away items where CouncilMeetings is null
+    // Take into consideration that data can be undefined
+    data = data?.filter(councilMeetingAttendance => councilMeetingAttendance.CouncilMeetings)
 
     if (error) councilMeetingAttendants.value = []
     else councilMeetingAttendants.value = data
@@ -154,16 +160,26 @@ const regularCouncilMembers = computed(() => {
         .filter(councilMember => [1, 2, 3].includes(councilMember.CouncilMemberRoles.id))
         .sort((a, b) => a.CouncilMemberRoles.rank - b.CouncilMemberRoles.rank || a.Politicians.Parties.name.localeCompare(b.Politicians.Parties.name))
         .map(councilMember => {
-            councilMember.SelectedStatus = councilMeetingAttendants.value.find(councilMeetingAttendant => councilMeetingAttendant.CouncilMembers.id === councilMember.id)?.status || 0
+            councilMember.SelectedStatus = councilMeetingAttendants.value.find(councilMeetingAttendant => councilMeetingAttendant.CouncilMember.id === councilMember.id)?.status || 0
+            councilMember.ReplacementMember = councilMeetingAttendants.value.find(councilMeetingAttendant => councilMeetingAttendant.CouncilMember.id === councilMember.id)?.CouncilMemberReplacement?.id || null
             return councilMember
         })
 })
 
-// const regularCouncilMembers = computed(() => {
-//     return councilMembers.value
-//         .filter(councilMember => [1, 2, 3].includes(councilMember.CouncilMemberRoles.id))
-//         .sort((a, b) => a.CouncilMemberRoles.id - b.CouncilMemberRoles.id || a.Politicians.Parties.name.localeCompare(b.Politicians.Parties.name))
-// })
+// A computed short hand function that returns filtered council members
+// we only want to show council members that are CouncilMemberRoles id 4
+// Filter by Politicians.Parties.id === partyId
+// Remove node Statuses
+function substituteCouncilMembers(partyId) {
+    return councilMembers.value
+        .filter(councilMember => councilMember.CouncilMemberRoles.id === 4)
+        .filter(councilMember => councilMember.Politicians.Parties.id === partyId)
+        .map(councilMember => {
+            delete councilMember.Statuses
+            return councilMember
+        })
+}
+
 
 // A computed short hand property that returns the selected tab id.
 const selectedTab = computed(() => {
@@ -176,32 +192,40 @@ function changeStatus(e, councilMember) {
 
     // If the CouncilMeetingAttendance exists, update the status calling the function updateCouncilMeetingAttendance
     // Else create a new CouncilMeetingAttendance calling the function createCouncilMeetingAttendance
-    const councilMeetingAttendance = councilMeetingAttendants.value.find(councilMeetingAttendant => councilMeetingAttendant.CouncilMembers.id === councilMember.id)
+    const councilMeetingAttendance = councilMeetingAttendants.value.find(councilMeetingAttendant => councilMeetingAttendant.CouncilMember.id === councilMember.id)
     if (councilMeetingAttendance) updateCouncilMeetingAttendance(councilMeeting.value.id, councilMember.id, status)
     else createCouncilMeetingAttendance(councilMeeting.value.id, councilMember.id, status)
 }
 
+function updateReplacementMember(e, councilMember) {
+    // Convert e.target.value to number and store as a new variable
+    const replacementCouncilMemberId = Number(e.target.value)
+
+    updateCouncilMeetingAttendanceReplacement(councilMeeting.value.id, councilMember.id, replacementCouncilMemberId)
+}
+
+async function updateCouncilMeetingAttendanceReplacement(councilMeetingId, councilMemberId, replacement_council_member) {
+    await supabase
+        .from('CouncilMeetingAttendance')
+        .update({ replacement_council_member })
+        .eq('council_meeting', councilMeetingId)
+        .eq('council_member', councilMemberId)
+}
 
 // Async function that updates the council meeting attendance
 async function updateCouncilMeetingAttendance(councilMeetingId, councilMemberId, status) {
-    let { data, error } = await supabase
+    await supabase
         .from('CouncilMeetingAttendance')
-        .update({ status })
+        .update({ status, replacement_council_member: null })
         .eq('council_meeting', councilMeetingId)
         .eq('council_member', councilMemberId)
-
-    // if (error) console.log(error)
-    // else console.log(data)
 }
 
 // Async function that creates a new council meeting attendance
 async function createCouncilMeetingAttendance(councilMeetingId, councilMemberId, status) {
-    let { data, error } = await supabase
+    await supabase
         .from('CouncilMeetingAttendance')
         .insert({ council_meeting: councilMeetingId, council_member: councilMemberId, status })
-
-    // if (error) console.log(error)
-    // else console.log(data)
 }
 
 // Function that changes the tab
@@ -232,6 +256,22 @@ watch(() => selectedTab.value, async (tabId) => {
         getCouncilMeetingAttendance()
     }
 })
+
+
+supabase.channel('custom-all-channel')
+    .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'CouncilMeetingAttendance' },
+        (payload) => {
+            // Replace the council meeting attendance with the updated one
+            // payload.new is the updated council meeting attendance
+            // payload.new.id is the id of the updated council meeting attendance
+            // replace the council meeting attendance with the updated one
+            const councilMeetingAttendance = councilMeetingAttendants.value.find(councilMeetingAttendant => councilMeetingAttendant.id === payload.new.id)
+            councilMeetingAttendance.status = payload.new.status
+        }
+    )
+    .subscribe()
 
 onMounted(() => {
     getCouncilMeeting()

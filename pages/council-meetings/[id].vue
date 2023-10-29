@@ -36,17 +36,48 @@
     </div>
 
     <div v-if="selectedTab === 1" class="mt-4 flow-root">
-        <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                <pre>{{ councilMeeting }}</pre>
+        <div class="sm:flex sm:items-center">
+            <div class="sm:flex-auto">
+                <!-- <h1 class="text-base font-semibold leading-6 text-gray-900">Saker</h1> -->
+                <p class="mt-2 text-sm text-gray-700">Det er registrert <b>{{ agendaItems.length }} saker</b> i forbindelse med dette møtet i kommunestyret.</p>
             </div>
+            <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+                <CouncilMeetingAgendaItemNew :council-meeting-id="councilMeeting?.id" />
+            </div>
+        </div>
+        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg mb-[500px] mt-6">
+            <table class="min-w-full divide-y divide-gray-300">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Saksnummer</th>
+                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Tittel</th>
+                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Acos</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white">
+                    <tr v-for="agendaItem in agendaItems" :key="agendaItem.id">
+                        <td class="whitespace-nowrap px-3 py-4 text-sm">{{ agendaItem.document_id }}</td>
+                        <td class="whitespace-nowrap px-3 py-4 text-sm">{{ agendaItem.document_name }}</td>
+                        <td class="whitespace-nowrap px-3 py-4 text-sm">{{ agendaItem.acos_id }}</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
     <div v-if="selectedTab === 2" class="mt-4 flow-root">
-        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg mb-[500px]">
+        <div class="sm:flex sm:items-center">
+            <div class="sm:flex-auto">
+                <!-- <h1 class="text-base font-semibold leading-6 text-gray-900">Users</h1> -->
+                <p class="mt-2 text-sm text-gray-700">Det er registrert fremmøte på <b>{{ councilMeetingAttendants.filter(x => x.status === 1).length }} av {{ regularCouncilMembers.length }}</b> faste medlemmer.</p>
+            </div>
+            <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+
+            </div>
+        </div>
+        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg mb-[500px] mt-6">
             <table class="min-w-full divide-y divide-gray-300">
-                <thead class="bg-white">
+                <thead class="bg-gray-50">
                     <tr>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Politiker</th>
                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Parti</th>
@@ -83,6 +114,7 @@ const councilMeeting = ref(undefined)
 const councilMembers = ref([])
 const councilMeetingAttendants = ref([])
 const councilMeetingAttendantStatus = ref([])
+const agendaItems = ref([])
 
 const tabs = ref([
     { id: 1, name: 'Saksliste', href: '#', current: true },
@@ -108,6 +140,22 @@ async function getCouncilMeeting() {
 
     if (error) councilMeeting.value = undefined
     else councilMeeting.value = data[0]
+}
+
+// Async function that fetches council meeting agenda items
+async function getCouncilMeetingAgendaItems() {
+    let { data, error } = await supabase
+        .from('CouncilMeetingAgendaItems')
+        .select(`
+                id,
+                document_id,
+                document_name,
+                acos_id
+            `)
+        .eq('council_meeting', councilMeeting.value.id)
+
+    if (error) agendaItems.value = []
+    else agendaItems.value = data
 }
 
 async function getCouncilMembers() {
@@ -252,8 +300,10 @@ function formatTime(time) {
 // Watcher that fetches council members when tab is at id 2
 watch(() => selectedTab.value, async (tabId) => {
     if (tabId === 2) {
-        getCouncilMembers()
-        getCouncilMeetingAttendance()
+        await getCouncilMembers()
+        await getCouncilMeetingAttendance()
+    } else if (tabId === 1) {
+        await getCouncilMeetingAgendaItems()
     }
 })
 
@@ -261,8 +311,16 @@ watch(() => selectedTab.value, async (tabId) => {
 supabase.channel('custom-all-channel')
     .on(
         'postgres_changes',
+        { event: '*', schema: 'public', table: 'CouncilMeetingAgendaItems' },
+        async () => {
+            await getCouncilMeetingAgendaItems()
+        }
+    )
+    .on(
+        'postgres_changes',
         { event: '*', schema: 'public', table: 'CouncilMeetingAttendance' },
         (payload) => {
+            console.log('CouncilMeetingAttendance', payload)
             // Replace the council meeting attendance with the updated one
             // payload.new is the updated council meeting attendance
             // payload.new.id is the id of the updated council meeting attendance
@@ -273,7 +331,8 @@ supabase.channel('custom-all-channel')
     )
     .subscribe()
 
-onMounted(() => {
-    getCouncilMeeting()
+onMounted(async () => {
+    await getCouncilMeeting()
+    await getCouncilMeetingAgendaItems()
 })
 </script>
